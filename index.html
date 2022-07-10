@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Images</title>
   <script src="./utils.js"></script>
+  <script src="./main.js"></script>
   <style>
     #drop {
       min-height: 100vh;
@@ -20,6 +21,17 @@
     .image-row {
       display: flex;
       height: auto;
+      border-bottom: solid 1px grey;
+    }
+
+    .image-row img,
+    .image-row canvas {
+      display: none;
+    }
+
+    .image-row.show img,
+    .image-row.show canvas {
+      display: block;
     }
   </style>
 </head>
@@ -29,12 +41,12 @@
   <!-- <div id="drop"></div> -->
   <div id="tag"></div>
   <script>
-    var list = [
-      // "https://picsum.photos/300/400",
-      // "https://picsum.photos/400/300",
-      // "https://picsum.photos/320/180",
-      // "https://picsum.photos/180/320",
-    ]
+    // var list = [
+    //   "https://picsum.photos/300/400",
+    //   "https://picsum.photos/400/300",
+    //   "https://picsum.photos/320/180",
+    //   "https://picsum.photos/180/320",
+    // ]
 
     // var input = document.querySelector("input");
     // input.onchange = async function (e) {
@@ -43,39 +55,6 @@
     //   input.remove();
     //   main(list);
     // }
-
-    async function main(list) {
-      var tag = document.querySelector("#tag");
-      tag.innerHTML = `<div class="image-row"></div>`;
-      var row = document.body.insertBefore(tag.firstChild, tag);
-      var targetWidth = row.offsetWidth;
-      var widthSum = 0
-
-      var image_promises = list.map(src => getImage(src));
-
-      var fragment = document.createDocumentFragment();
-
-      for (var promise of image_promises) {
-        var img = await promise;
-        if (!img) continue
-        img.style.width = "0px"
-        img.style.flexGrow = img.naturalWidth / img.naturalHeight
-        widthSum += img.naturalWidth / img.naturalHeight * 150;
-
-        if (widthSum <= targetWidth)
-          fragment.appendChild(img);
-        if (widthSum > targetWidth) {
-          row.appendChild(fragment);
-
-          tag.innerHTML = `<div class="image-row"></div>`;
-          row = document.body.insertBefore(tag.firstChild, tag);
-          fragment = document.createDocumentFragment();
-          fragment.appendChild(img);
-          widthSum = img.naturalWidth / img.naturalHeight * 150;
-        }
-      }
-      row.appendChild(fragment);
-    }
 
   </script>
   <script>
@@ -87,14 +66,14 @@
       document.querySelectorAll(".image-row").forEach(ele => ele.remove())
       event.stopPropagation();
       event.preventDefault();
-      debugger
+
       var fileTreePromise = [...event.dataTransfer.items]
         .filter(item => item.kind === "file")
         .map(item => item.webkitGetAsEntry())
         .map(entry => traverseFileTree(entry))
 
       Promise.all(fileTreePromise).then(trees => {
-        main(trees.flat().map(e => getSrc(e.file)));
+        main(trees.flat().map(e => URL.createObjectURL(e.file)));
       });
       return;
     }

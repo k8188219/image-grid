@@ -58,18 +58,77 @@ function getRandomInt(max) {
   return Math.floor(Math.random() * max);
 }
 
+var get_image_count = 0;
+var batch_list = new Proxy([], {
+  get(target, prop) {
+    return target[prop] ?? (target[prop] = [])
+  }
+})
+var batch_lock = new Proxy([], {
+  get(target, prop) {
+    return target[prop] ??
+      (
+        target[prop] = Promise.all(batch_list[prop])
+          // .then(() => new Promise(r => setTimeout(r, 100)))
+      )
+  }
+})
+
 async function getImage(src) {
-  return new Promise(resolve => {
-    var img = new Image();
-    img.src = src;
-    img.onload = () => resolve(img)
-    img.onerror = () => resolve()
-  })
+  var batch_index = Math.floor(get_image_count++ / 4);
+  var batch = batch_list[batch_index];
+
+  var resolve = null;
+  var img_promise = new Promise(r => { resolve = r });
+  batch.push(img_promise);
+
+  if (batch_index > 0)
+    await batch_lock[batch_index - 1]
+
+  createImage(src, resolve);
+  return img_promise;
 }
 
-
-function getSrc(file) {
-  return URL.createObjectURL(file)
+function createImage(src, cb) {
+  var img = new Image();
+  img.src = src;
+  img.onload = () => compressImage(img, cb)
+  // img.onload = () => cb(img)
+  img.onerror = () => cb()
 }
 
+function compressImage(img, cb) {
+  const HEIGHT = 360;
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
+  // Actual resizing
+  canvas.width = img.naturalWidth * HEIGHT / img.naturalHeight;
+  console.log(img.naturalWidth * HEIGHT / img.naturalHeight)
+  console.log(canvas.width)
+  canvas.height = HEIGHT;
+  canvas.naturalWidth = img.naturalWidth;
+  canvas.naturalHeight = img.naturalHeight;
+  ctx.drawImage(img, 0, 0, img.naturalWidth * HEIGHT / img.naturalHeight, HEIGHT);
 
+  cb(canvas);
+
+  // canvas.toBlob(blob => {
+  //   var img = new Image();
+  //   img.src = URL.createObjectURL(blob);
+  //   img.onload = () => cb(img)
+  //   img.onerror = () => cb()
+  // })
+}
+
+function isOverlap(a1, a2, b1, b2) {
+  var a_before_b = (a1 <= b1 && a1 <= b2) &&
+    (a2 <= b1 && a2 <= b2)
+
+  var a_after_b = (a1 >= b1 && a1 >= b2) &&
+    (a2 >= b1 && a2 >= b2)
+
+  var not_overlap = a_before_b || a_after_b
+
+  return !not_overlap
+
+}

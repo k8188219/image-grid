@@ -19,6 +19,12 @@ var pending_jobs = []
 
 var mainThreadListener = (e) => {
   var job = pending_jobs[e.data.id];
+  pending_jobs[e.data.id] = undefined; // release ref for gc
+
+  if (job.new_job_control) {
+    return job.new_job_control(e.data);
+  }
+
   var canvas = job.canvas;
   var { width, height } = e.data;
 
@@ -126,17 +132,16 @@ function createWorker2() {
 function compressImage4(file, img, cb) {
   const HEIGHT = 360;
   var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
   canvas.width = img.naturalWidth * HEIGHT / img.naturalHeight;
   canvas.height = HEIGHT;
   canvas.naturalWidth = img.naturalWidth;
   canvas.naturalHeight = img.naturalHeight;
 
-  setTimeout(() => {
-    workers[i].postMessage({ file, id: pending_jobs.length });
-    i = (i + 1) % workers.length
-
-    pending_jobs.push({ canvas, cb: () => { } })
-  }, 1000)
+  assignWorker({ file }).then(result => {
+    var { image_bitmap } = result;
+    requestAnimationFrame(() => ctx.drawImage(image_bitmap, 0, 0))
+  })
 
   cb(canvas);
 }

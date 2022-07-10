@@ -4,8 +4,10 @@ var batch_list = new Proxy([], {
 })
 
 var batch_lock = new Proxy([], {
-  get: (target, prop) => target[prop] ?? (target[prop] = Promise.all(batch_list[prop]))
-    .then(() => new Promise(r => setTimeout(r, 100)))
+  get: (target, prop) => target[prop] ?? (target[prop] = Promise.all(batch_list[prop]).then(() => {
+    // new Promise(r => setTimeout(r, 100))
+  }))
+
 })
 
 function getImage(file) {
@@ -14,8 +16,7 @@ function getImage(file) {
 
   var img_promise = (async () => {
     if (batch_index > 0) {
-      await Promise.all(batch_list[batch_index - 1]);
-      // await batch_lock[batch_index - 1];
+      await batch_lock[batch_index - 1];
     }
     return await createImage(file)
   })();
@@ -64,7 +65,7 @@ async function pngSize(file) {
 
 var jpg_segments = [];
 async function jpgSize(file) {
-  var ab = await file.slice(2, 1024).arrayBuffer();
+  var ab = await file.slice(2, 10240).arrayBuffer();
   var dv = new DataView(ab);
 
   var naturalWidth = null
@@ -91,7 +92,7 @@ async function jpgSize(file) {
     if (marker == 0xC0 && i + 7 <= dv.byteLength) {
       naturalWidth = dv.getUint16(i + 5, false)
       naturalHeight = dv.getUint16(i + 3, false)
-      break;
+      if (!LOG_IMAGE_SIZE) break;
     }
   }
 

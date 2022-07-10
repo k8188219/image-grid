@@ -26,26 +26,28 @@ async function main(list) {
   var tag = document.querySelector("#tag");
   tag.innerHTML = `<div class="image-row"></div>`;
   var row = document.body.insertBefore(tag.firstChild, tag);
+  var fragment = document.createDocumentFragment();
+
   var targetWidth = row.offsetWidth;
   var widthSum = 0
-  var image_promises = list.map(src => getImage(src));
-  var fragment = document.createDocumentFragment();
+  var image_promises = list.map(entery => getImage(entery.file));
   h_arr = [];
 
+  var ts = performance.now()
 
   for (var promise of image_promises) {
     var img = await promise;
     if (!img) continue
     img.style.width = "0px"
     img.style.flexGrow = img.naturalWidth / img.naturalHeight * 10
-    widthSum += img.naturalWidth / img.naturalHeight * 150;
+    widthSum += img.naturalWidth / img.naturalHeight * TARGET_ROW_HEIGHT;
 
     if (widthSum <= targetWidth)
       fragment.appendChild(img);
     if (widthSum > targetWidth) {
-      widthSum -= img.naturalWidth / img.naturalHeight * 150;
+      widthSum -= img.naturalWidth / img.naturalHeight * TARGET_ROW_HEIGHT;
 
-      var h = 150 / widthSum;
+      var h = TARGET_ROW_HEIGHT / widthSum;
       h_arr.push(h);
       var h_box = document.createElement("div")
       h_box.style.paddingTop = `calc(${h} * 100% + 1px)`
@@ -57,13 +59,19 @@ async function main(list) {
       row = document.body.insertBefore(tag.firstChild, tag);
       fragment = document.createDocumentFragment();
       fragment.appendChild(img);
-      widthSum = img.naturalWidth / img.naturalHeight * 150;
+      widthSum = img.naturalWidth / img.naturalHeight * TARGET_ROW_HEIGHT;
     }
   }
-  var h = 150 / widthSum;
+  var h = TARGET_ROW_HEIGHT / widthSum;
   h_arr.push(h);
   var h_box = document.createElement("div")
   h_box.style.paddingTop = `calc(${h} * 100%)`
   fragment.appendChild(h_box);
   row.appendChild(fragment);
+
+  console.log(performance.now() - ts)
+
+  // for(let w of workers) {
+  //   w.terminate();
+  // }
 }

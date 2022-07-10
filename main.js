@@ -1,21 +1,18 @@
-var h_arr = [];
 
 var raf = () => {
   var scroll_div = document.documentElement;
-  var start = scroll_div.scrollTop + (scroll_div.clientHeight * -0.5)
-  var end = scroll_div.scrollTop + (scroll_div.clientHeight * 1.5)
+  var top = (scroll_div.clientHeight * -0.5)
+  var bottom = (scroll_div.clientHeight * 1.5)
   var rows = document.querySelectorAll(".image-row");
-  var compute_H = 0;
   if (rows.length)
-    h_arr.forEach((h, i) => {
+    rows.forEach(row => {
+      var rect = row.getBoundingClientRect();
+      var div_top = rect.top
+      var div_bottom = rect.bottom
 
-      var div_start = compute_H
-      var div_end = compute_H + h * scroll_div.offsetWidth
-      compute_H = div_end;
-
-      // rows[i].style.background = isOverlap(start, end, div_start, div_end) ? "red" : "blue";
-      isOverlap(start, end, div_start, div_end) ? rows[i].classList.add("show") : rows[i].classList.remove("show");
-
+      isOverlap(top, bottom, div_top, div_bottom)
+        ? row.classList.add("show")
+        : row.classList.remove("show");
     })
 
   requestAnimationFrame(raf)
@@ -48,7 +45,6 @@ async function main(list) {
       widthSum -= img.naturalWidth / img.naturalHeight * TARGET_ROW_HEIGHT;
 
       var h = TARGET_ROW_HEIGHT / widthSum;
-      h_arr.push(h);
       var h_box = document.createElement("div")
       h_box.style.paddingTop = `calc(${h} * 100% + 2px)`
       fragment.appendChild(h_box);
@@ -63,7 +59,6 @@ async function main(list) {
     }
   }
   var h = TARGET_ROW_HEIGHT / widthSum;
-  h_arr.push(h);
   var h_box = document.createElement("div")
   h_box.style.paddingTop = `calc(${h} * 100% + 2px)`
   fragment.appendChild(h_box);

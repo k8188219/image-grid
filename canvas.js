@@ -132,15 +132,11 @@ function compressImage4(file, img, cb) {
   canvas.naturalHeight = img.naturalHeight;
 
   setTimeout(() => {
-    if (false)
-      ctx.drawImage(img, 0, 0, img.naturalWidth * HEIGHT / img.naturalHeight, HEIGHT);
-
     workers[i].postMessage({ file, id: pending_jobs.length });
     i = (i + 1) % workers.length
 
     pending_jobs.push({ canvas, cb: () => { } })
-
-  }, 10000)
+  }, 1000)
 
   cb(canvas);
 }

@@ -50,6 +50,89 @@ async function createImage2(file) {
     if (COMPRESS_IMAGE === 3)
       compressImage3(file, resolve)
     if (COMPRESS_IMAGE === 4)
-      createImage1(URL.createObjectURL(file)).then(img => compressImage4(file, img, resolve))
+      getImageSize(file).then(img => compressImage4(file, img, resolve), () => resolve())
   })
+}
+
+async function pngSize(file) {
+  var ab = await file.slice(0, 32).arrayBuffer();
+  var dv = new DataView(ab);
+  var naturalWidth = dv.getUint32(16, false)
+  var naturalHeight = dv.getUint32(20, false)
+  return { naturalWidth, naturalHeight }
+}
+
+var jpg_segments = [];
+async function jpgSize(file) {
+  var ab = await file.slice(2, 1024).arrayBuffer();
+  var dv = new DataView(ab);
+
+  var naturalWidth = null
+  var naturalHeight = null
+
+  var i = 0;
+  function getc(dv) {
+    if (i >= dv.byteLength) return NaN;
+    return dv.getUint8(i++, false)
+  }
+
+  var segments = [];
+
+  for (; ;) {
+    var marker;
+    while ((marker = getc(dv)) < 0xFF);
+    while ((marker = getc(dv)) == 0xFF);
+
+    if (marker == 0x00) continue
+    if (Number.isNaN(marker)) break;
+
+    segments.push([...new Uint8Array(ab.slice(i - 2, i + 2))].map(n => n.toString(16).padStart(2, "0")).join(" "))
+    // SOF0 Segment
+    if (marker == 0xC0 && i + 7 <= dv.byteLength) {
+      naturalWidth = dv.getUint16(i + 5, false)
+      naturalHeight = dv.getUint16(i + 3, false)
+      break;
+    }
+  }
+
+  jpg_segments.push(segments)
+
+  if (naturalWidth === null || naturalHeight === null)
+    return Promise.reject()
+
+  return { naturalWidth, naturalHeight }
+}
+
+async function getImageSize(file) {
+  var ab = await file.slice(0, 4).arrayBuffer();
+  var dv = new DataView(ab);
+  var header = dv.getUint32(0, false)
+
+  var png_header = 0x89504e47
+  var jpg_header = 0xffd8ff
+
+  var type = header === png_header
+    ? "png"
+    : header >>> 8 === jpg_header
+      ? "jpg"
+      : null
+
+  try {
+    if (type === "png") {
+      var size = await pngSize(file);
+      LOG_IMAGE_SIZE && console.log(type, size)
+      return size;
+    }
+    if (type === "jpg") {
+      var size = await jpgSize(file);
+      LOG_IMAGE_SIZE && console.log(type, size)
+      return size;
+    }
+  } catch (err) {
+    LOG_IMAGE_SIZE && console.log(type, "read size error")
+    return Promise.reject(err)
+  }
+
+  LOG_IMAGE_SIZE && console.log("unsupport file type")
+  return Promise.reject()
 }

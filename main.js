@@ -50,7 +50,7 @@ async function main(list) {
       var h = TARGET_ROW_HEIGHT / widthSum;
       h_arr.push(h);
       var h_box = document.createElement("div")
-      h_box.style.paddingTop = `calc(${h} * 100% + 1px)`
+      h_box.style.paddingTop = `calc(${h} * 100% + 2px)`
       fragment.appendChild(h_box);
 
       row.appendChild(fragment);
@@ -65,7 +65,7 @@ async function main(list) {
   var h = TARGET_ROW_HEIGHT / widthSum;
   h_arr.push(h);
   var h_box = document.createElement("div")
-  h_box.style.paddingTop = `calc(${h} * 100%)`
+  h_box.style.paddingTop = `calc(${h} * 100% + 2px)`
   fragment.appendChild(h_box);
   row.appendChild(fragment);
 

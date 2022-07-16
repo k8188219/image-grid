@@ -5,8 +5,26 @@ var jobs_batch_list = new Proxy([], {
 var jobs_batch_lock = new Proxy([], {
   get: (target, prop) => target[prop] ?? (target[prop] = Promise.all(jobs_batch_list[prop]).then(() => {
     jobs_batch_list[prop] = []; /* release ref for gc */
+    for (let w of workers) {
+      w.terminate();
+    }
+    workers = []
+    for (let i = 0; i < COMPRESS_WORKERS; i++) {
+      let worker = createWorker()
+
+      worker.addEventListener("message", mainThreadListener)
+      workers.push(worker);
+    }
   }))
 })
+
+var next_worker = 0;
+var workers = []
+for (let i = 0; i < COMPRESS_WORKERS; i++) {
+  let worker = createWorker()
+  worker.addEventListener("message", mainThreadListener)
+  workers.push(worker);
+}
 
 var jobs_count = 0
 function assignWorker(job) {
@@ -23,11 +41,19 @@ function assignWorker(job) {
   return job_promise;
 }
 
+var pending_jobs = []
+
+function mainThreadListener(e) {
+  var job = pending_jobs[e.data.id];
+  pending_jobs[e.data.id] = null; // release ref for gc
+  job.resolve(e.data);
+}
+
 async function dispatchJob(job) {
   return new Promise(resolve => {
-    workers[i].postMessage({ ...job, id: pending_jobs.length });
-    i = (i + 1) % workers.length
+    workers[next_worker].postMessage({ ...job, id: pending_jobs.length });
+    next_worker = (next_worker + 1) % workers.length
 
-    pending_jobs.push({ new_job_control: resolve })
+    pending_jobs.push({ resolve })
   })
 }

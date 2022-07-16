@@ -26,7 +26,6 @@
     .image-row {
       display: flex;
       height: auto;
-      border-bottom: solid 1px grey;
     }
 
     .image-row img,
@@ -42,33 +41,14 @@
 </head>
 
 <body>
-  <!-- <input type="file" multiple /> -->
-  <!-- <div id="drop"></div> -->
   <div id="tag"></div>
-  <script>
-    // var list = [
-    //   "https://picsum.photos/300/400",
-    //   "https://picsum.photos/400/300",
-    //   "https://picsum.photos/320/180",
-    //   "https://picsum.photos/180/320",
-    // ]
-
-    // var input = document.querySelector("input");
-    // input.onchange = async function (e) {
-    //   for (let file of input.files)
-    //     list.push(await getSrc(file));
-    //   input.remove();
-    //   main(list);
-    // }
-
-  </script>
   <script>
     window.addEventListener("dragover", (event) => event.preventDefault());
     window.addEventListener("drop", handleDrop);
 
     function handleDrop(event) {
-      // drop.remove()
       document.querySelectorAll(".image-row").forEach(ele => ele.remove())
+      document.querySelectorAll("canvas").forEach(ele => ele.remove())
       event.stopPropagation();
       event.preventDefault();
 

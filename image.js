@@ -47,11 +47,7 @@ async function createImage2(file) {
     if (COMPRESS_IMAGE === 1)
       createImage1(URL.createObjectURL(file)).then(img => compressImage1(img, resolve))
     if (COMPRESS_IMAGE === 2)
-      compressImage2(file, resolve)
-    if (COMPRESS_IMAGE === 3)
-      compressImage3(file, resolve)
-    if (COMPRESS_IMAGE === 4)
-      getImageSize(file).then(img => compressImage4(file, img, resolve), () => resolve())
+      getImageSize(file).then(img => compressImage2(file, img, resolve), () => resolve())
   })
 }
 
@@ -64,8 +60,8 @@ async function pngSize(file) {
 }
 
 var jpg_segments = [];
-async function jpgSize(file) {
-  var ab = await file.slice(2, 10240).arrayBuffer();
+async function jpgSize(file, start = 2) {
+  var ab = await file.slice(start, start + 10240).arrayBuffer();
   var dv = new DataView(ab);
 
   var naturalWidth = null
@@ -89,17 +85,27 @@ async function jpgSize(file) {
 
     segments.push([...new Uint8Array(ab.slice(i - 2, i + 2))].map(n => n.toString(16).padStart(2, "0")).join(" "))
     // SOF0 Segment
-    if (marker == 0xC0 && i + 7 <= dv.byteLength) {
+    if ((marker >= 0xC0 && marker <= 0xC3) && i + 7 <= dv.byteLength) {
       naturalWidth = dv.getUint16(i + 5, false)
       naturalHeight = dv.getUint16(i + 3, false)
       if (!LOG_IMAGE_SIZE) break;
+    }
+
+    if (i + 2 <= dv.byteLength)
+      i += dv.getUint16(i, false)
+    else {
+      i -= 2
+      break;
     }
   }
 
   jpg_segments.push(segments)
 
-  if (naturalWidth === null || naturalHeight === null)
+  if (naturalWidth === null || naturalHeight === null) {
+    if (ab.byteLength === 10240)
+      return await jpgSize(file, start + i)
     return Promise.reject()
+  }
 
   return { naturalWidth, naturalHeight }
 }

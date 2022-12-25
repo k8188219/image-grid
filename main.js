@@ -30,10 +30,9 @@ async function main(list) {
   var image_promises = list.map(entery => getImage(entery.file));
   h_arr = [];
 
-  var ts = performance.now()
+  var images = await Promise.all(image_promises)
 
-  for (var promise of image_promises) {
-    var img = await promise;
+  for (var img of images) {
     if (!img) continue
     img.style.width = "0px"
     img.style.flexGrow = img.naturalWidth / img.naturalHeight * 10
@@ -67,8 +66,6 @@ async function main(list) {
 
   fragment.appendChild(h_box);
   row.appendChild(fragment);
-
-  console.log(performance.now() - ts)
 
   // for(let w of workers) {
   //   w.terminate();

@@ -13,6 +13,17 @@
   <script src="./image.js"></script>
   <script src="./worker.js"></script>
   <script src="./main.js"></script>
+  <script>
+    Object.defineProperty(Array.prototype, 'chunk', {
+      value: function (chunkSize) {
+        var R = [];
+        for (var i = 0; i < this.length; i += chunkSize)
+          R.push(this.slice(i, i + chunkSize));
+        return R;
+      }
+    });
+
+  </script>
   <style>
     #drop {
       min-height: 100vh;
@@ -46,20 +57,37 @@
     window.addEventListener("dragover", (event) => event.preventDefault());
     window.addEventListener("drop", handleDrop);
 
-    function handleDrop(event) {
+    async function handleDrop(event) {
       document.querySelectorAll(".image-row").forEach(ele => ele.remove())
       document.querySelectorAll("canvas").forEach(ele => ele.remove())
       event.stopPropagation();
       event.preventDefault();
 
-      var fileTreePromise = [...event.dataTransfer.items]
+      var fileEntries = [...event.dataTransfer.items]
         .filter(item => item.kind === "file")
         .map(item => item.webkitGetAsEntry())
-        .map(entry => traverseFileTree(entry))
 
-      Promise.all(fileTreePromise).then(trees => {
-        main(trees.flat());
-      });
+
+      console.time("file")
+      const files = await traverseFileTree(fileEntries)
+      console.timeEnd("file")
+
+      const chunks = files.chunk(100)
+
+      console.time("total")
+      for (var chunk of chunks) {
+        console.time("chunk")
+        const a = await Promise.all(chunk.map(fileEntery => new Promise(resolve => {
+          fileEntery.file(resolve)
+        })));
+        console.timeEnd("chunk")
+
+        console.time("draw")
+        await main(a.map(file => ({ file })));
+        console.timeEnd("draw")
+      }
+      console.timeEnd("total")
+
       return;
     }
   </script>

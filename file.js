@@ -23,26 +23,18 @@ function strComp(a, b) {
   return a.length < b.length ? -1 : 1
 }
 
-
-async function traverseFileTree(item, path) {
-  path = path || "";
-  if (item.isFile) {
-    // Get file
-    return await new Promise(resolve => {
-      item.file(function (file) {
-        resolve([{ name: path + file.name, file }])
-      });
-    })
-  } else if (item.isDirectory) {
-    // Get folder contents
-    var entries = await readDirectory(item)
-    entries = [entries.filter(e => e.isFile).sort(sortFn), entries.filter(e => e.isDirectory).sort(sortFn)].flat();
-    var arr = []
-    for (var i = 0; i < entries.length; i++) {
-      arr.push(await traverseFileTree(entries[i], path + item.name + "/"))
-    }
-    return arr.flat()
+async function traverseFileTree(entries = []) {
+  var files = entries.filter(e => e.isFile).sort(sortFn);
+  if (files.length === entries.length) {
+    return files;
   }
+  // Get folder contents
+  var directories = entries.filter(e => e.isDirectory).sort(sortFn);
+
+  for (var directory of directories) {
+    files = files.concat(await readDirectory(directory).then(traverseFileTree))
+  }
+  return files;
 }
 
 async function readDirectory(directory) {
@@ -62,8 +54,6 @@ async function readDirectory(directory) {
 
     entries = entries.concat(batch)
   }
-
   return entries
-
 }
 

@@ -59,9 +59,10 @@ async function main(list) {
   }
   var h = TARGET_ROW_HEIGHT / widthSum;
   var h_box = document.createElement("div")
-  if (widthSum < targetWidth * 0.8)
+  if (widthSum < targetWidth * 0.8) {
     h_box.style.flexGrow = (targetWidth * 0.8 - widthSum) / TARGET_ROW_HEIGHT * 10
-  else
+    h_box.style.paddingTop = `calc(${TARGET_ROW_HEIGHT / targetWidth / 0.8} * 100% + 0.1px)`
+  } else
     h_box.style.paddingTop = `calc(${h} * 100% + 0.1px)`
 
   fragment.appendChild(h_box);

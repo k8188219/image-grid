@@ -48,6 +48,8 @@ async function createImage2(file) {
       createImage1(URL.createObjectURL(file)).then(img => compressImage1(img, resolve))
     if (COMPRESS_IMAGE === 2)
       getImageSize(file).then(img => compressImage2(file, img, resolve), () => resolve())
+    if (COMPRESS_IMAGE === 3)
+      getImageSize(file).then(img => compressImage3(file, img, resolve), () => resolve())
   })
 }
 

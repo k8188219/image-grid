@@ -18,6 +18,13 @@ var jobs_batch_lock = new Proxy([], {
   }))
 })
 
+
+function createWorker() {
+  const name = `compressImage${COMPRESS_IMAGE}_Worker`;
+  const worker = new Worker("/canvas.js", { name });
+  return worker;
+}
+
 var next_worker = 0;
 var workers = []
 for (let i = 0; i < COMPRESS_WORKERS; i++) {
@@ -46,6 +53,7 @@ var pending_jobs = []
 function mainThreadListener(e) {
   var job = pending_jobs[e.data.id];
   pending_jobs[e.data.id] = null; // release ref for gc
+  // console.log(Math.floor(e.data.id / (COMPRESS_WORKERS * 5)))
   job.resolve(e.data);
 }
 

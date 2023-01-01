@@ -61,13 +61,17 @@ async function pngSize(file) {
   return { naturalWidth, naturalHeight }
 }
 
-var jpg_segments = [];
-async function jpgSize(file, start = 2) {
-  var ab = await file.slice(start, start + 10240).arrayBuffer();
+// https://stackoverflow.com/questions/2517854/getting-image-size-of-jpeg-from-its-binary
+async function jpgSize(file, offset = 2) {
+  const CHUNK_SIZE = 10240
+  var ab = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
   var dv = new DataView(ab);
 
-  var naturalWidth = null
-  var naturalHeight = null
+  var size = null;
+  // var size = {
+  //   naturalWidth: null,
+  //   naturalHeight: null,
+  // }
 
   var i = 0;
   function getc(dv) {
@@ -75,41 +79,61 @@ async function jpgSize(file, start = 2) {
     return dv.getUint8(i++, false)
   }
 
-  var segments = [];
-
-  for (; ;) {
+  while (i < dv.byteLength) {
     var marker;
-    while ((marker = getc(dv)) < 0xFF);
-    while ((marker = getc(dv)) == 0xFF);
+    // ┌i
+    //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+    if ((marker = getc(dv)) !== 0xFF) {
+      // debugger;
+      throw new Error('read file error: not 0xFF');
+    }
 
-    if (marker == 0x00) continue
+    //    ┌i
+    //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+    marker = getc(dv);
+
+    if (marker == 0xd8) continue;    // SOI
+    if (marker == 0xd9) break;       // EOI
+    if (0xd0 <= marker && marker <= 0xd7) continue;
+    if (marker == 0x01) continue;    // TEM
     if (Number.isNaN(marker)) break;
 
-    segments.push([...new Uint8Array(ab.slice(i - 2, i + 2))].map(n => n.toString(16).padStart(2, "0")).join(" "))
     // SOF0 Segment
-    if ((marker >= 0xC0 && marker <= 0xC3) && i + 7 <= dv.byteLength) {
-      naturalWidth = dv.getUint16(i + 5, false)
-      naturalHeight = dv.getUint16(i + 3, false)
-      if (!LOG_IMAGE_SIZE) break;
+    if (
+      (marker >= 0xC0 && marker <= 0xC3) &&
+      (i + 7 <= dv.byteLength)
+    ) {
+      size = {
+        //       ┌i             ┌(i + 5)
+        //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+        naturalWidth: dv.getUint16(i + 5, false),
+        //       ┌i       ┌(i + 3)
+        //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+        naturalHeight: dv.getUint16(i + 3, false),
+      }
+      break;
     }
 
     if (i + 2 <= dv.byteLength)
-      i += dv.getUint16(i, false)
+      //       ┌i
+      //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+      i += dv.getUint16(i, false) // skip segment
     else {
-      i -= 2
+      // ┌i
+      //  FF C2 00 11 08 04 2B 03 52 03 01 22 00 02 11 01 03 11 01
+      i -= 2 // make i point to 0xFF for next chunk
       break;
     }
   }
 
-  jpg_segments.push(segments)
+  if (size) return size;
 
-  if (naturalWidth === null || naturalHeight === null) {
-    if (ab.byteLength === 10240)
-      return await jpgSize(file, start + i)
-    return Promise.reject()
+  const isLastChunk = ab.byteLength !== CHUNK_SIZE
+  if (!isLastChunk) {
+    const nextChunkOffset = offset + i
+    return await jpgSize(file, nextChunkOffset)
   }
-
-  return { naturalWidth, naturalHeight }
+  throw new Error('read file error: cannot read size');
 }
 
 async function getImageSize(file) {
@@ -129,19 +153,17 @@ async function getImageSize(file) {
   try {
     if (type === "png") {
       var size = await pngSize(file);
-      LOG_IMAGE_SIZE && console.log(type, size)
       return size;
     }
     if (type === "jpg") {
       var size = await jpgSize(file);
-      LOG_IMAGE_SIZE && console.log(type, size)
       return size;
     }
   } catch (err) {
-    LOG_IMAGE_SIZE && console.log(type, "read size error")
-    return Promise.reject(err)
+    console.error(err);
+    return Promise.reject();
   }
 
-  LOG_IMAGE_SIZE && console.log("unsupport file type")
+  console.error("unsupported file type")
   return Promise.reject()
 }

@@ -21,7 +21,7 @@ var jobs_batch_lock = new Proxy([], {
 
 function createWorker() {
   const name = `compressImage${COMPRESS_IMAGE}_Worker`;
-  const worker = new Worker("/canvas.js", { name });
+  const worker = new Worker("./canvas.js", { name });
   return worker;
 }
 
